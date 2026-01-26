@@ -1,10 +1,10 @@
 import type { SparkPlugin } from './types/plugin';
-
-// Import your plugins here
-// import { MyPlugin } from '@/domains/my-plugin';
+import QuickNotesPlugin from '@/domains/quick-notes';
+import FeedAggregatorPlugin from '@/domains/feed-aggregator';
 
 export const activePlugins: SparkPlugin[] = [
-  // MyPlugin
+  QuickNotesPlugin,
+  FeedAggregatorPlugin,
 ];
 
 export function getRoutes() {

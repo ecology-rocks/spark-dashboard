@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { activePlugins } from '@/core/pluginLoader';
 import { APP_CONFIG } from '@/config';
+import { useAuthStore } from '@/core/stores/auth'; // <--- Check this
+
+const auth = useAuthStore(); // <--- Check this
 </script>
 
 <template>
@@ -11,7 +14,18 @@ import { APP_CONFIG } from '@/config';
                 <span class="app-name">{{ APP_CONFIG.appName }}</span>
             </div>
 
+            <div class="user-section">
+                <div v-if="auth.user" class="logged-in">
+                    <p class="user-email">{{ auth.user.email }}</p>
+                    <button @click="auth.logout" class="logout-btn">Logout</button>
+                </div>
+                <div v-else class="logged-out">
+                    <router-link to="/login" class="login-btn">Login</router-link>
+                </div>
+            </div>
+
             <nav>
+                <div class="nav-divider">Menu</div>
                 <router-link to="/" class="nav-item">
                     Dashboard
                 </router-link>
@@ -77,5 +91,38 @@ import { APP_CONFIG } from '@/config';
     font-size: 1.5rem;
     font-weight: bold;
     margin-bottom: 2rem;
+}
+
+.user-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #ddd;
+}
+
+.user-email {
+    font-size: 0.85rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    word-break: break-all;
+}
+
+.logout-btn {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.login-btn {
+    display: block;
+    background: #2c3e50;
+    color: white;
+    text-align: center;
+    padding: 8px;
+    border-radius: 4px;
+    text-decoration: none;
 }
 </style>

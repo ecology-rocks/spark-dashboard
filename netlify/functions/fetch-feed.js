@@ -1,0 +1,28 @@
+import fetch from 'node-fetch'; // Standard in Node 18+, but explicit import is safer in modules
+
+export const handler = async function (event, context) {
+  const { url } = event.queryStringParameters;
+
+  if (!url) {
+    return { statusCode: 400, body: "Missing URL parameter" };
+  }
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+    }
+    const data = await response.text();
+
+    return {
+      statusCode: 200,
+      headers: {
+        "Content-Type": "application/xml",
+        "Access-Control-Allow-Origin": "*",
+      },
+      body: data,
+    };
+  } catch (error) {
+    return { statusCode: 500, body: error.toString() };
+  }
+};
