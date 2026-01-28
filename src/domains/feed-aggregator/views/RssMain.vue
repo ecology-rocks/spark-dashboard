@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useFeedStore } from '../store';
-import { useAnalysisStore } from '@/domains/analysis-engine/store';
+import { useAnalysisStore } from '@/core/stores/analysis';
 import SourceManager from '../components/SourceManager.vue';
-import AddToAreaModal from '@/domains/areas-of-interest/components/AddToAreaModal.vue';
+// FIX: Import from Core
+import SaveResourceModal from '@/core/components/SaveResourceModal.vue';
 
 const feedStore = useFeedStore();
 const analysisStore = useAnalysisStore();
@@ -11,21 +12,18 @@ const isSaveModalOpen = ref(false);
 const itemToSave = ref<any>(null);
 
 function openSaveModal(item: any) {
-    // Determine if we are saving just the article or a Spark analysis
     const hasSpark = !!item.nativeData?.aiSummary;
 
     itemToSave.value = {
         title: item.title,
-        // If it has a Spark, save as 'spark' type, otherwise just 'rss'
         type: hasSpark ? 'spark' : 'rss',
         sourceUrl: item.url,
-        content: hasSpark ? item.nativeData.aiSummary : item.summary // Save the rich data if available
+        content: hasSpark ? item.nativeData.aiSummary : item.summary
     };
     isSaveModalOpen.value = true;
 }
 
 onMounted(() => {
-    // FIX: Check 'subscriptions' instead of 'sources'
     if (feedStore.subscriptions.length > 0) {
         feedStore.fetchAll();
     }
@@ -65,13 +63,12 @@ onMounted(() => {
 
                     <p class="summary">{{ item.summary }}</p>
                     <div class="actions-row">
-                        <button class="icon-btn save-btn" @click="openSaveModal(item)" title="Save to Area">
+                        <button class="icon-btn save-btn" @click="openSaveModal(item)" title="Save to Knowledge Base">
                             💾
                         </button>
                     </div>
 
                     <div class="spark-area">
-
                         <div v-if="analysisStore.getSpark(item.url!)" class="ai-result">
                             <div class="ai-header">
                                 <strong>✨ Spark Analysis</strong>
@@ -94,17 +91,17 @@ onMounted(() => {
                         })" :disabled="analysisStore.isAnalyzing">
                             {{ analysisStore.isAnalyzing ? 'Thinking...' : '✨ Spark Analysis' }}
                         </button>
-
                     </div>
                 </article>
             </div>
         </main>
     </div>
-    <AddToAreaModal :is-open="isSaveModalOpen" :item-data="itemToSave" @close="isSaveModalOpen = false" />
+
+    <SaveResourceModal :is-open="isSaveModalOpen" :item-data="itemToSave" @close="isSaveModalOpen = false" />
 </template>
 
 <style scoped>
-/* (Same styles as before, no changes needed here) */
+/* Reuse existing styles */
 .feed-layout {
     display: flex;
     height: 100%;
@@ -185,7 +182,6 @@ onMounted(() => {
     margin-bottom: 1rem;
 }
 
-/* AI Styles */
 .spark-area {
     margin-top: 1rem;
     border-top: 1px solid #eee;

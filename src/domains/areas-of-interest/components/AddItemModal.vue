@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { useAreasStore } from '../store';
+import { useItemsStore } from '@/core/stores/items'; // <--- NEW STORE
 import RichEditor from '@/core/components/RichEditor.vue';
 
 const props = defineProps<{
@@ -9,13 +9,12 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits(['close', 'saved']);
-const store = useAreasStore();
+const store = useItemsStore(); // <--- Use itemsStore
 
 const title = ref('');
 const url = ref('');
 const content = ref('');
 
-// Reset fields when opening
 watch(() => props.isOpen, (val) => {
     if (val) {
         title.value = '';
@@ -27,12 +26,11 @@ watch(() => props.isOpen, (val) => {
 async function handleSubmit() {
     if (!props.areaId || !title.value.trim()) return;
 
-    await store.saveItemToArea(
+    // FIX: call createItem on itemsStore
+    await store.createItem(
         props.areaId,
         {
             title: title.value,
-            // FIX: Use 'null' instead of 'undefined'.
-            // Firebase accepts 'null', allowing the field to exist without a value.
             sourceUrl: url.value || null,
             type: 'note',
             content: content.value
@@ -81,6 +79,7 @@ async function handleSubmit() {
 </template>
 
 <style scoped>
+/* Reuse existing styles */
 .modal-backdrop {
     position: fixed;
     top: 0;

@@ -1,45 +1,42 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useAreasStore } from '../store';
+import { useItemsStore } from '@/core/stores/items'; // <--- NEW STORE
 import { useAuthStore } from '@/core/stores/auth';
-import { useAnalysisStore } from '@/domains/analysis-engine/store';
+import { useAnalysisStore } from '@/core/stores/analysis';
 import AreaTreeItem from '../components/AreaTreeItem.vue';
 
 // Modals
 import EditTagsModal from '../components/EditTagsModal.vue';
-import ViewContentModal from '../components/ViewContentModal.vue';
+import ReaderModal from '@/core/components/ReaderModal.vue';
 import MoveItemModal from '../components/MoveItemModal.vue';
 import EditContentModal from '../components/EditContentModal.vue';
 import AreaFormModal from '../components/AreaFormModal.vue';
 import AddItemModal from '../components/AddItemModal.vue';
+import ActionStatusPicker from '../components/ActionStatusPicker.vue';
 
-const store = useAreasStore();
+const areasStore = useAreasStore();
+const itemsStore = useItemsStore(); // <--- Use this for items
 const auth = useAuthStore();
 const analysisStore = useAnalysisStore();
 
 const activeFilter = ref('');
-const searchQuery = ref(''); // <--- NEW STATE
+const searchQuery = ref('');
 
 // --- MODAL STATE ---
 const isTagModalOpen = ref(false);
 const itemToEditTags = ref<any>(null);
-
 const isViewModalOpen = ref(false);
 const itemToView = ref<{ title: string; content: string } | null>(null);
-
 const isMoveModalOpen = ref(false);
 const itemToMove = ref<any>(null);
-
 const isEditContentModalOpen = ref(false);
 const itemToEditContent = ref<any>(null);
-
 const isAreaModalOpen = ref(false);
 const areaIdToEdit = ref<string | null>(null);
-
 const isAddItemModalOpen = ref(false);
 
 // --- ACTIONS ---
-
 function openCreateAreaModal() {
     areaIdToEdit.value = null;
     isAreaModalOpen.value = true;
@@ -77,9 +74,10 @@ function openEditContentModal(item: any) {
     isEditContentModalOpen.value = true;
 }
 
+// FIX: Use itemsStore
 async function handleTagsSaved(newTags: string[]) {
     if (itemToEditTags.value) {
-        await store.updateItemTags(itemToEditTags.value.id, newTags);
+        await itemsStore.updateItemTags(itemToEditTags.value.id, newTags);
         itemToEditTags.value = null;
     }
 }
@@ -88,7 +86,6 @@ function hasReadableContent(item: any) {
     return item.type === 'note' || (item.content && typeof item.content === 'string');
 }
 
-// --- AI ANALYZE LOGIC ---
 async function handleAnalyze(item: any) {
     const safeContent = (typeof item.content === 'string') ? item.content : '';
     await analysisStore.analyze({
@@ -100,27 +97,23 @@ async function handleAnalyze(item: any) {
 
 // --- COMPUTED ---
 const currentArea = computed(() => {
-    return store.areas.find(a => a.id === store.selectedAreaId);
+    return areasStore.areas.find(a => a.id === areasStore.selectedAreaId);
 });
 
-// UPDATED: Filter by Tag AND Search Query
+// FIX: Filter from itemsStore.items
 const filteredItems = computed(() => {
-    let items = store.activeItems;
+    let items = itemsStore.items;
 
-    // 1. Filter by Tag (if selected)
     if (activeFilter.value) {
         items = items.filter(item => item.tags?.includes(activeFilter.value));
     }
 
-    // 2. Filter by Search Query (if typed)
     if (searchQuery.value.trim()) {
         const q = searchQuery.value.toLowerCase();
         items = items.filter(item => {
             const inTitle = item.title.toLowerCase().includes(q);
             const inContent = (typeof item.content === 'string') && item.content.toLowerCase().includes(q);
-            // Also check tags so searching "biomass" finds items tagged #biomass
             const inTags = item.tags?.some(t => t.toLowerCase().includes(q));
-
             return inTitle || inContent || inTags;
         });
     }
@@ -129,7 +122,7 @@ const filteredItems = computed(() => {
 });
 
 const availableTags = computed(() => {
-    const allTags = store.activeItems.flatMap(i => i.tags || []);
+    const allTags = itemsStore.items.flatMap(i => i.tags || []);
     return [...new Set(allTags)].sort();
 });
 </script>
@@ -143,15 +136,15 @@ const availableTags = computed(() => {
             </div>
 
             <ul>
-                <AreaTreeItem v-for="rootArea in store.areaTree" :key="rootArea.id" :area="rootArea" :depth="0" />
+                <AreaTreeItem v-for="rootArea in areasStore.areaTree" :key="rootArea.id" :area="rootArea" :depth="0" />
             </ul>
-            <div v-if="auth.user && store.areas.length === 0" class="empty-msg">
+            <div v-if="auth.user && areasStore.areas.length === 0" class="empty-msg">
                 No areas yet. Click + to create one.
             </div>
         </aside>
 
         <main class="areas-content">
-            <div v-if="!store.selectedAreaId" class="placeholder">
+            <div v-if="!areasStore.selectedAreaId" class="placeholder">
                 <div class="placeholder-content">
                     <h3>Welcome to your Knowledge Base</h3>
                     <p>Select a folder on the left or create a new one.</p>
@@ -163,7 +156,7 @@ const availableTags = computed(() => {
                 <div class="area-header-block">
                     <div class="title-row">
                         <h2>{{ currentArea?.name }}</h2>
-                        <button class="icon-btn edit-area-btn" @click="openEditAreaModal(store.selectedAreaId!)"
+                        <button class="icon-btn edit-area-btn" @click="openEditAreaModal(areasStore.selectedAreaId!)"
                             title="Edit Folder">
                             ✏️
                         </button>
@@ -198,7 +191,8 @@ const availableTags = computed(() => {
                             </button>
                         </div>
 
-                        <button @click="store.deleteArea(store.selectedAreaId!)" class="delete-btn text-danger">
+                        <button @click="areasStore.deleteArea(areasStore.selectedAreaId!)"
+                            class="delete-btn text-danger">
                             Delete Folder
                         </button>
                     </div>
@@ -206,7 +200,6 @@ const availableTags = computed(() => {
 
                 <div class="items-grid">
                     <div v-for="item in filteredItems" :key="item.id" class="item-card">
-
                         <div class="top-row">
                             <div class="type-badge">{{ item.type }}</div>
                             <div class="tags-list">
@@ -253,6 +246,7 @@ const availableTags = computed(() => {
                                 <button class="action-btn" @click="openEditContentModal(item)" title="Edit Content">
                                     ✏️ Edit
                                 </button>
+                                <ActionStatusPicker :item="item" />
                             </div>
 
                             <div class="secondary-actions">
@@ -262,7 +256,8 @@ const availableTags = computed(() => {
                                 <button class="action-btn" @click="openTagModal(item)" title="Tag">
                                     🏷️ Tag
                                 </button>
-                                <button class="action-btn delete" @click="store.deleteItem(item.id)" title="Delete">
+                                <button class="action-btn delete" @click="itemsStore.deleteItem(item.id)"
+                                    title="Delete">
                                     🗑️
                                 </button>
                             </div>
@@ -281,11 +276,12 @@ const availableTags = computed(() => {
     <EditTagsModal :is-open="isTagModalOpen" :initial-tags="itemToEditTags?.tags || []" @save="handleTagsSaved"
         @close="isTagModalOpen = false" />
 
-    <ViewContentModal :is-open="isViewModalOpen" :title="itemToView?.title || ''" :content="itemToView?.content || ''"
+    <ReaderModal :is-open="isViewModalOpen" :title="itemToView?.title || ''" :content="itemToView?.content || ''"
         @close="isViewModalOpen = false" />
 
-    <MoveItemModal :is-open="isMoveModalOpen" :item-id="itemToMove?.id || null" :current-area-id="store.selectedAreaId"
-        @saved="isMoveModalOpen = false" @close="isMoveModalOpen = false" />
+    <MoveItemModal :is-open="isMoveModalOpen" :item-id="itemToMove?.id || null"
+        :current-area-id="areasStore.selectedAreaId" @saved="isMoveModalOpen = false"
+        @close="isMoveModalOpen = false" />
 
     <EditContentModal :is-open="isEditContentModalOpen" :item="itemToEditContent"
         @saved="isEditContentModalOpen = false" @close="isEditContentModalOpen = false" />
@@ -293,12 +289,13 @@ const availableTags = computed(() => {
     <AreaFormModal :is-open="isAreaModalOpen" :edit-id="areaIdToEdit" @saved="isAreaModalOpen = false"
         @close="isAreaModalOpen = false" />
 
-    <AddItemModal :is-open="isAddItemModalOpen" :area-id="store.selectedAreaId" @saved="isAddItemModalOpen = false"
+    <AddItemModal :is-open="isAddItemModalOpen" :area-id="areasStore.selectedAreaId" @saved="isAddItemModalOpen = false"
         @close="isAddItemModalOpen = false" />
 </template>
 
 <style scoped>
-/* Reuse existing styles */
+/* (Reuse existing styles) */
+/* Include the full style block from the previous file content */
 .areas-layout {
     display: flex;
     height: 100%;
@@ -389,7 +386,6 @@ const availableTags = computed(() => {
     line-height: 1.5;
 }
 
-/* HEADER STYLES */
 .items-header {
     display: flex;
     justify-content: space-between;
@@ -418,7 +414,6 @@ const availableTags = computed(() => {
     flex-wrap: wrap;
 }
 
-/* NEW SEARCH STYLES */
 .search-wrapper {
     position: relative;
     display: flex;
@@ -511,7 +506,6 @@ const availableTags = computed(() => {
     font-weight: bold;
 }
 
-/* Item Card */
 .items-grid {
     display: flex;
     flex-direction: column;
@@ -619,6 +613,7 @@ const availableTags = computed(() => {
 .secondary-actions {
     display: flex;
     gap: 0.5rem;
+    align-items: center;
 }
 
 .action-btn {

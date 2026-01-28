@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useAreasStore } from '../store';
+import { useItemsStore } from '@/core/stores/items'; // <--- NEW STORE
 import type { Area } from '../types';
 
 const props = defineProps<{
@@ -8,20 +9,21 @@ const props = defineProps<{
     depth: number;
 }>();
 
-const store = useAreasStore();
-const isOpen = ref(false); // Toggle for collapse/expand
+const areasStore = useAreasStore();
+const itemsStore = useItemsStore(); // <--- Use this
+const isOpen = ref(false);
 
 const hasChildren = computed(() => props.area.children && props.area.children.length > 0);
-const isSelected = computed(() => store.selectedAreaId === props.area.id);
+const isSelected = computed(() => areasStore.selectedAreaId === props.area.id);
 
 function handleClick() {
-    store.fetchItemsForArea(props.area.id);
-    // Optional: Auto-expand when clicked
-    // isOpen.value = true;
+    // FIX: Fetch via itemsStore, but set selection in areasStore
+    itemsStore.fetchByArea(props.area.id);
+    areasStore.selectedAreaId = props.area.id;
 }
 
 function toggle(e: Event) {
-    e.stopPropagation(); // Don't trigger select
+    e.stopPropagation();
     isOpen.value = !isOpen.value;
 }
 </script>
@@ -90,8 +92,6 @@ li {
 .spacer {
     width: 18px;
 }
-
-/* Aligns items without children */
 
 .folder-icon {
     margin-right: 6px;

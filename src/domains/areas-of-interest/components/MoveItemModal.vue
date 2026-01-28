@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { useAreasStore } from '../store';
+import { useAreasStore } from '../store'; // Still needed for list of folders
+import { useItemsStore } from '@/core/stores/items'; // <--- NEW STORE
 
 const props = defineProps<{
     isOpen: boolean;
@@ -9,7 +10,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits(['close', 'saved']);
-const store = useAreasStore();
+const areasStore = useAreasStore(); // For listing folders
+const itemsStore = useItemsStore(); // For performing the move
 const selectedArea = ref('');
 
 watch(() => props.isOpen, () => {
@@ -18,12 +20,12 @@ watch(() => props.isOpen, () => {
 
 async function handleMove() {
     if (!props.itemId || !selectedArea.value) return;
-    await store.moveItem(props.itemId, selectedArea.value);
+    // FIX: use itemsStore
+    await itemsStore.moveItem(props.itemId, selectedArea.value);
     emit('saved');
     emit('close');
 }
 </script>
-
 <template>
     <div v-if="isOpen" class="modal-backdrop" @click.self="emit('close')">
         <div class="modal-content">
@@ -33,7 +35,7 @@ async function handleMove() {
                 <label>Select New Folder:</label>
                 <select v-model="selectedArea">
                     <option disabled value="">-- Choose Area --</option>
-                    <option v-for="area in store.areas.filter(a => a.id !== currentAreaId)" :key="area.id"
+                    <option v-for="area in areasStore.areas.filter(a => a.id !== currentAreaId)" :key="area.id"
                         :value="area.id">
                         {{ area.name }}
                     </option>
@@ -49,6 +51,7 @@ async function handleMove() {
 </template>
 
 <style scoped>
+/* Reuse existing styles */
 .modal-backdrop {
     position: fixed;
     top: 0;

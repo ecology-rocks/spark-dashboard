@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { useAreasStore } from '../store';
-// IMPORTANT: We import OUR component, not the library
+import { useItemsStore } from '@/core/stores/items'; // <--- NEW STORE
 import RichEditor from '@/core/components/RichEditor.vue';
 
 const props = defineProps<{
@@ -10,12 +9,11 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits(['close', 'saved']);
-const store = useAreasStore();
+const store = useItemsStore(); // <--- Use itemsStore
 
 const titleInput = ref('');
 const contentInput = ref('');
 
-// Sync state when modal opens
 watch(() => props.isOpen, (isOpen) => {
     if (isOpen && props.item) {
         titleInput.value = props.item.title;
@@ -30,7 +28,6 @@ async function handleSave() {
     emit('close');
 }
 </script>
-
 <template>
     <div v-if="isOpen" class="modal-backdrop" @click.self="emit('close')">
         <div class="modal-content">
@@ -62,6 +59,7 @@ async function handleSave() {
 </template>
 
 <style scoped>
+/* Reuse styles from previous file content */
 .modal-backdrop {
     position: fixed;
     top: 0;
