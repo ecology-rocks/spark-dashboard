@@ -3,7 +3,10 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useWriterStore } from '../store';
 import RichEditor from '@/core/components/RichEditor.vue';
 import SourceSidebar from '../components/SourceSidebar.vue';
+import OpenDraftModal from '../components/OpenDraftModal.vue';
+import PublishModal from '../components/PublishModal.vue';
 
+const isPublishModalVisible = ref(false);
 const store = useWriterStore();
 const editorComponentRef = ref<any>(null);
 const saveStatus = ref('Saved');
@@ -29,6 +32,14 @@ const currentDraft = computed(() =>
 
 function setStatus(status: string) {
     saveStatus.value = status;
+}
+
+async function handlePublish() {
+    if (!currentDraft.value) return;
+    const url = prompt("Enter the URL where this was published:");
+    if (url) {
+        await store.publishDraft(currentDraft.value.id, url);
+    }
 }
 
 async function saveDraft() {
@@ -102,36 +113,38 @@ function handleCustomDrop(data: any) {
     <div class="writer-layout">
         <header class="writer-header">
             <div class="left-controls">
-                <select v-model="store.activeDraftId" class="draft-select">
-                    <option :value="null" disabled>Select Draft...</option>
-                    <option v-for="d in store.drafts" :key="d.id" :value="d.id">
-                        {{ d.title }}
-                    </option>
-                </select>
-                <button class="icon-btn" @click="createNew" title="New Draft">➕</button>
+                <button class="action-btn" @click="store.isOpenModalVisible = true">📂 Open</button>
+                <button class="icon-btn" @click="createNew">➕</button>
             </div>
 
             <div class="center-controls" v-if="currentDraft">
-                <input :value="currentDraft.title" @input="onTitleChange" @blur="saveDraft" class="title-input"
-                    placeholder="Untitled Draft" />
+                <input :value="currentDraft.title" @input="onTitleChange" @blur="saveDraft" class="title-input" />
             </div>
 
             <div class="right-controls">
+                <button v-if="currentDraft && !currentDraft.isPublished" class="pub-btn"
+                    @click="isPublishModalVisible = true">
+                    🚀 Publish
+                </button>
+                <div v-else class="published-info">
+                    <a :href="currentDraft?.publishedUrl" target="_blank" class="pub-link">
+                        Check Live ↗
+                    </a>
+                    <button class="icon-btn edit-link" @click="isPublishModalVisible = true" title="Edit Link">
+                        📝
+                    </button>
+                </div>
+
                 <span class="save-status">{{ saveStatus }}</span>
-                <button class="save-btn" @click="saveDraft" title="Manual Save">💾 Save</button>
-
-                <div class="divider"></div>
-
-                <button class="toggle-btn" :class="{ active: store.isSidebarOpen }"
-                    @click="store.isSidebarOpen = !store.isSidebarOpen">
-                    {{ store.isSidebarOpen ? 'Hide Sources' : 'Show Sources' }} 📚
+                <button class="toggle-btn" @click="store.isSidebarOpen = !store.isSidebarOpen">
+                    {{ store.isSidebarOpen ? 'Hide' : 'Sources' }} 📚
                 </button>
             </div>
         </header>
 
         <div class="workspace">
             <main class="editor-pane">
-                <div v-if="currentDraft" class="editor-container">
+                <div v-if="currentDraft" :key="currentDraft.id" class="editor-container">
                     <RichEditor ref="editorComponentRef" :modelValue="currentDraft.content"
                         @update:modelValue="onContentChange" @drop-custom="handleCustomDrop" />
                 </div>
@@ -141,10 +154,13 @@ function handleCustomDrop(data: any) {
                 </div>
             </main>
 
-            <transition name="slide">
-                <SourceSidebar v-if="store.isSidebarOpen" />
-            </transition>
+            <SourceSidebar v-if="store.isSidebarOpen" />
+
         </div>
+        <OpenDraftModal v-if="store.isOpenModalVisible" />
+        <PublishModal v-if="isPublishModalVisible && currentDraft" :draftId="currentDraft.id"
+            :title="currentDraft.title" :initialUrl="currentDraft.publishedUrl"
+            @close="isPublishModalVisible = false" />
     </div>
 </template>
 
@@ -154,6 +170,48 @@ function handleCustomDrop(data: any) {
     flex-direction: column;
     height: 100%;
     background: white;
+}
+
+.published-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.edit-link {
+    font-size: 0.9rem;
+    padding: 2px;
+    opacity: 0.6;
+}
+
+.edit-link:hover {
+    opacity: 1;
+}
+
+.action-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.pub-btn {
+    background: #2ecc71;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.pub-link {
+    color: #2ecc71;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
 }
 
 .writer-header {

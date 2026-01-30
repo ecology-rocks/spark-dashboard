@@ -1,7 +1,9 @@
 export interface Draft {
   id: string
   title: string
-  content: string // HTML from Quill
-  updatedAt: any
+  content: string
   createdAt: any
+  updatedAt: any
+  publishedUrl?: string //
+  isPublished?: boolean //
 }

@@ -96,7 +96,7 @@ export interface SparkPlugin {
 
 ## 4. Plugin Deep Dive
 
-### 📂 Areas of Interest (Knowledge Base)
+### 📂 Areas of Interest
 
 - **Purpose:** Manages the folder hierarchy and displays saved items filtered by folder.
 - **Key Store:** `useAreasStore` (Only manages folder structure/tree).
@@ -108,7 +108,7 @@ export interface SparkPlugin {
 - **Purpose:** Ingests external data from RSS, Government APIs, and News APIs.
 - **Key Store:** `useFeedStore`.
 - **Architecture:** Uses the **Adapter Pattern** (`rssAdapter`, `govAdapter`, `newsAdapter`) to normalize different APIs into a standard `Resource` format.
-- **Interaction:** Users "Save" resources to the Knowledge Base using the shared `SaveResourceModal` (Core).
+- **Interaction:** Users "Save" resources to the Areas of Interest using the shared `SaveResourceModal` (Core).
 
 ### ⚡ Action Center
 

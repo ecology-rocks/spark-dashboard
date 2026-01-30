@@ -16,16 +16,15 @@ let quillInstance: any = null;
 defineExpose({
     insertHTML: (html: string) => {
         if (quillInstance) {
-            // Focus first to ensure we have a valid range
             quillInstance.focus();
-            const range = quillInstance.getSelection(true); // true = ignore focus
+            const range = quillInstance.getSelection();
             if (range) {
+                // Use pasteHTML for insertion at cursor
                 quillInstance.clipboard.dangerouslyPasteHTML(range.index, html, 'user');
                 quillInstance.setSelection(range.index + html.length);
             } else {
-                // Fallback: Append to end if no selection found
                 const length = quillInstance.getLength();
-                quillInstance.clipboard.dangerouslyPasteHTML(length, html, 'user');
+                quillInstance.clipboard.dangerouslyPasteHTML(length - 1, html, 'user');
             }
         }
     },
@@ -84,10 +83,12 @@ onMounted(() => {
 });
 
 watch(() => props.modelValue, (newVal) => {
-    if (quillInstance && newVal !== quillInstance.root.innerHTML) {
+    if (quillInstance) {
         const currentContent = quillInstance.root.innerHTML;
-        if (newVal !== currentContent) {
-            quillInstance.clipboard.dangerouslyPasteHTML(0, newVal);
+        // Only update if the prop is different from what's already in the editor
+        if (newVal !== currentContent && newVal !== (currentContent === '<p><br></p>' ? '' : currentContent)) {
+            // Replace all content instead of prepending
+            quillInstance.root.innerHTML = newVal || '';
         }
     }
 });

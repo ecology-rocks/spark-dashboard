@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useItemsStore } from '@/core/stores/items';
 import { useZoteroStore } from '@/core/stores/zotero';
 import type { SavedItem } from '@/core/types/items';
@@ -15,7 +15,9 @@ const zSearchQuery = ref('');
 let zDebounce: any = null;
 
 // Ensure local items are loaded
-if (itemsStore.items.length === 0) itemsStore.fetchAll();
+onMounted(() => {
+    itemsStore.fetchAll();
+});
 
 // --- TAB 1: LOCAL ITEMS LOGIC ---
 const filteredItems = computed(() => {

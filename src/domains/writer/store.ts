@@ -21,6 +21,7 @@ export const useWriterStore = defineStore('writer', () => {
   const drafts = ref<Draft[]>([])
   const activeDraftId = ref<string | null>(null)
   const isSidebarOpen = ref(true) // Default to having source material open
+  const isOpenModalVisible = ref(false) //
 
   let unsubscribe: Unsubscribe | null = null
 
@@ -36,6 +37,16 @@ export const useWriterStore = defineStore('writer', () => {
     })
     activeDraftId.value = docRef.id
     return docRef.id
+  }
+
+  async function publishDraft(id: string, url: string) {
+    if (!auth.user) return
+    const draftRef = doc(db, 'users', auth.user.uid, 'drafts', id)
+    await updateDoc(draftRef, {
+      publishedUrl: url,
+      isPublished: true, // Remains true even on edits
+      updatedAt: serverTimestamp(),
+    })
   }
 
   async function updateDraft(id: string, changes: Partial<Draft>) {
@@ -75,5 +86,7 @@ export const useWriterStore = defineStore('writer', () => {
     updateDraft,
     deleteDraft,
     fetchDrafts,
+    isOpenModalVisible,
+    publishDraft,
   }
 })

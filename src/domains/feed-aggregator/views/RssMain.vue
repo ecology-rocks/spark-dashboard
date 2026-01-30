@@ -63,7 +63,8 @@ onMounted(() => {
 
                     <p class="summary">{{ item.summary }}</p>
                     <div class="actions-row">
-                        <button class="icon-btn save-btn" @click="openSaveModal(item)" title="Save to Knowledge Base">
+                        <button class="icon-btn save-btn" @click="openSaveModal(item)"
+                            title="Save to Areas of Interest">
                             💾
                         </button>
                     </div>

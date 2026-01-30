@@ -22,7 +22,8 @@ export const useItemsStore = defineStore('items', () => {
   const auth = useAuthStore()
 
   const items = ref<SavedItem[]>([])
-  let unsubscribe: Unsubscribe | null = null
+  let globalUnsubscribe: Unsubscribe | null = null // Separate reference
+  let areaUnsubscribe: Unsubscribe | null = null
 
   // --- ACTIONS ---
 
@@ -114,14 +115,14 @@ export const useItemsStore = defineStore('items', () => {
    */
   function fetchByArea(areaId: string) {
     if (!auth.user) return
-    if (unsubscribe) unsubscribe()
+    if (areaUnsubscribe) areaUnsubscribe()
 
     const q = query(
       collection(db, 'users', auth.user.uid, 'saved_items'),
       where('areaId', '==', areaId),
     )
 
-    unsubscribe = onSnapshot(q, (snap) => {
+    areaUnsubscribe = onSnapshot(q, (snap) => {
       items.value = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }) as SavedItem)
         .sort((a, b) => (b.savedAt?.seconds || 0) - (a.savedAt?.seconds || 0))
@@ -133,11 +134,12 @@ export const useItemsStore = defineStore('items', () => {
    */
   function fetchAll() {
     if (!auth.user) return
-    if (unsubscribe) unsubscribe()
+    // Only subscribe if we haven't already
+    if (globalUnsubscribe) return
 
     const q = query(collection(db, 'users', auth.user.uid, 'saved_items'))
 
-    unsubscribe = onSnapshot(q, (snap) => {
+    globalUnsubscribe = onSnapshot(q, (snap) => {
       items.value = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }) as SavedItem)
         .sort((a, b) => (b.savedAt?.seconds || 0) - (a.savedAt?.seconds || 0))

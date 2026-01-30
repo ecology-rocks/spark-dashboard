@@ -49,7 +49,7 @@ async function handleCreateAndSave() {
 <template>
     <div v-if="isOpen" class="modal-backdrop" @click.self="emit('close')">
         <div class="modal-content">
-            <h3>📥 Save to Knowledge Base</h3>
+            <h3>📥 Save to Areas of Interest</h3>
 
             <div class="preview">
                 <strong>Saving:</strong> {{ itemData?.title }}

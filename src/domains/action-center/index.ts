@@ -7,7 +7,7 @@ const ActionCenterPlugin: SparkPlugin = {
     id: 'action-center',
     name: 'Action Center',
     icon: 'bolt',
-    description: 'Process your knowledge queue.',
+    description: 'Process your areas of interest queue.',
   },
   components: {
     mainView: ActionDashboard,

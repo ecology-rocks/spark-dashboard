@@ -5,7 +5,7 @@ import AreasWidget from './components/AreasWidget.vue' // <--- Import
 const AreasPlugin: SparkPlugin = {
   manifest: {
     id: 'areas-of-interest',
-    name: 'Knowledge Base',
+    name: 'Areas of Interest',
     icon: 'folder_special',
     description: 'Organize your research',
   },

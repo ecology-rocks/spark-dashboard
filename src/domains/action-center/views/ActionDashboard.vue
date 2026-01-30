@@ -85,7 +85,7 @@ async function onDrop(event: DragEvent, status: ActionStatus) {
     <div class="command-center">
         <header>
             <h1>⚡ Action Command Center</h1>
-            <p>Triage and process your active knowledge queue.</p>
+            <p>Triage and process your active areas of interest queue.</p>
         </header>
 
         <div class="dashboard-grid">
