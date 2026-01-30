@@ -21,17 +21,24 @@ export const useAreasStore = defineStore('areas-of-interest', () => {
   const selectedAreaId = ref<string | null>(null)
 
   const areaTree = computed(() => {
+    // Ensure we have an array to work with
+    if (!areas.value || areas.value.length === 0) return []
+
     type AreaNode = Area & { children: Area[] }
     const map: Record<string, AreaNode> = {}
     const roots: AreaNode[] = []
 
+    // Use a safe map creation
     areas.value.forEach((a) => {
-      map[a.id] = { ...a, children: [] }
+      if (a && a.id) {
+        map[a.id] = { ...a, children: [] }
+      }
     })
 
     areas.value.forEach((a) => {
       const node = map[a.id]
       if (!node) return
+
       const pid = a.parentId
       if (pid && map[pid]) {
         map[pid].children.push(node)

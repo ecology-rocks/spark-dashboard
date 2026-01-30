@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useAreasStore } from '../store';
 import { useItemsStore } from '@/core/stores/items';
 
@@ -35,8 +35,8 @@ const tagMenuRef = ref<HTMLElement | null>(null);
 const searchInputRef = ref<HTMLInputElement | null>(null);
 
 // Modal State
-const isTagModalOpen = ref(false);
-const itemToEditTags = ref<any>(null);
+const isTagsModalOpen = ref(false); // Add this missing ref
+const selectedItem = ref<any>(null); // Replaces itemToEditTags
 const isViewModalOpen = ref(false);
 const itemToView = ref<{ title: string; content: string } | null>(null);
 const isMoveModalOpen = ref(false);
@@ -48,16 +48,52 @@ const areaIdToEdit = ref<string | null>(null);
 const isAddItemModalOpen = ref(false);
 
 // --- LIFECYCLE ---
-onMounted(() => {
+// src/domains/areas-of-interest/views/AreasMain.vue
+
+onMounted(async () => {
     document.addEventListener('click', handleClickOutside);
-    // Initial fetch based on selection
-    if (!areasStore.selectedAreaId) itemsStore.fetchAll();
-    else itemsStore.fetchByArea(areasStore.selectedAreaId);
+
+    // Always trigger a global fetch to ensure the store is listening
+    await itemsStore.fetchAll();
+
+    // If we have a specific area selected, narrow the focus
+    if (areasStore.selectedAreaId) {
+        itemsStore.fetchByArea(areasStore.selectedAreaId);
+    }
 });
 
-onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside);
+onMounted(async () => {
+    console.log('[DEBUG] AreasMain: Component Mounted');
+    console.log('[DEBUG] Current Area ID:', areasStore.selectedAreaId);
+
+    document.addEventListener('click', handleClickOutside);
+
+    try {
+        console.log('[DEBUG] Starting initial fetchAll');
+        await itemsStore.fetchAll();
+        console.log('[DEBUG] Items after fetchAll:', itemsStore.items.length);
+
+        if (areasStore.selectedAreaId) {
+            console.log('[DEBUG] Fetching by Area:', areasStore.selectedAreaId);
+            itemsStore.fetchByArea(areasStore.selectedAreaId);
+        }
+    } catch (error) {
+        console.error("[DEBUG] Load Error:", error);
+    }
 });
+
+// Add this computed property to track filtering logic
+const debugInfo = computed(() => {
+    return {
+        totalStoreItems: itemsStore.items.length,
+        filterTag: activeFilter.value,
+        filterType: typeFilter.value,
+        search: searchQuery.value,
+        resultCount: filteredItems.value.length
+    };
+});
+
+
 
 function onZotero(item: any) {
     itemToLink.value = item;
@@ -93,14 +129,11 @@ function openAddItemModal() { isAddItemModalOpen.value = true; }
 function onRead(item: any) { itemToView.value = { title: item.title, content: item.content }; isViewModalOpen.value = true; }
 function onEditContent(item: any) { itemToEditContent.value = item; isEditContentModalOpen.value = true; }
 function onMove(item: any) { itemToMove.value = item; isMoveModalOpen.value = true; }
-function onTag(item: any) { itemToEditTags.value = item; isTagModalOpen.value = true; }
 function onFilterTag(tag: string) { activeFilter.value = tag; }
 
-async function handleTagsSaved(newTags: string[]) {
-    if (itemToEditTags.value) {
-        await itemsStore.updateItemTags(itemToEditTags.value.id, newTags);
-        itemToEditTags.value = null;
-    }
+function onTag(item: any) {
+    selectedItem.value = item;
+    isTagsModalOpen.value = true;
 }
 
 // --- COMPUTED ---
@@ -108,7 +141,11 @@ const currentArea = computed(() => areasStore.areas.find(a => a.id === areasStor
 const pageTitle = computed(() => currentArea.value ? currentArea.value.name : '🗃️ All Items');
 
 const filteredItems = computed(() => {
-    let items = itemsStore.items;
+    const rawItems = itemsStore.items;
+
+    if (!rawItems || rawItems.length === 0) return [];
+
+    let items = [...rawItems];
 
     // 1. Tag Filter
     if (activeFilter.value) {
@@ -141,12 +178,25 @@ const filteredItems = computed(() => {
     return items;
 });
 
-const availableTags = computed(() => [...new Set(itemsStore.items.flatMap(i => i.tags || []))].sort());
+const availableTags = computed(() => {
+    // Safety guard
+    const rawItems = itemsStore.items || [];
+    return [...new Set(rawItems.flatMap(i => i.tags || []))].sort();
+});
 const displayedTags = computed(() => !tagSearchQuery.value ? availableTags.value : availableTags.value.filter(t => t.toLowerCase().includes(tagSearchQuery.value.toLowerCase())));
+
+watch(debugInfo, (val) => {
+    console.log('[DEBUG] Filter State Change:', val);
+}, { deep: true });
 </script>
 
 <template>
     <div class="areas-layout">
+        <div
+            style="position:fixed; bottom:0; left:0; background:rgba(0,0,0,0.8); color:lime; font-family:monospace; font-size:10px; padding:10px; z-index:9999; pointer-events:none;">
+            Items: {{ debugInfo.totalStoreItems }} | Showing: {{ debugInfo.resultCount }} | Area: {{
+                areasStore.selectedAreaId || 'None' }}
+        </div>
         <AreasSidebar @create="openCreateAreaModal" />
 
         <main class="areas-content">
@@ -230,18 +280,17 @@ const displayedTags = computed(() => !tagSearchQuery.value ? availableTags.value
         </main>
     </div>
 
-    <EditTagsModal :is-open="isTagModalOpen" :initial-tags="itemToEditTags?.tags || []" @save="handleTagsSaved"
-        @close="isTagModalOpen = false" />
+    <EditTagsModal v-if="isTagsModalOpen && selectedItem" :item="selectedItem" @close="isTagsModalOpen = false" />
 
     <ReaderModal :is-open="isViewModalOpen" :title="itemToView?.title || ''" :content="itemToView?.content || ''"
         @close="isViewModalOpen = false" />
 
-    <MoveItemModal :is-open="isMoveModalOpen" :folders="areasStore.areas" :item-id="itemToMove?.id || null"
-        :current-area-id="areasStore.selectedAreaId" @saved="isMoveModalOpen = false"
+    <MoveItemModal v-if="isMoveModalOpen && itemToMove" :is-open="isMoveModalOpen" :folders="areasStore.areas"
+        :item-id="itemToMove.id" :current-area-id="areasStore.selectedAreaId" @saved="isMoveModalOpen = false"
         @close="isMoveModalOpen = false" />
 
-    <EditContentModal :is-open="isEditContentModalOpen" :item="itemToEditContent"
-        @saved="isEditContentModalOpen = false" @close="isEditContentModalOpen = false" />
+    <EditContentModal v-if="isEditContentModalOpen && itemToEditContent" :is-open="isEditContentModalOpen"
+        :item="itemToEditContent" @saved="isEditContentModalOpen = false" @close="isEditContentModalOpen = false" />
 
     <AreaFormModal :is-open="isAreaModalOpen" :edit-id="areaIdToEdit" @saved="isAreaModalOpen = false"
         @close="isAreaModalOpen = false" />
@@ -256,13 +305,19 @@ const displayedTags = computed(() => !tagSearchQuery.value ? availableTags.value
 /* (Reuse styles from previous turn) */
 .areas-layout {
     display: flex;
-    height: 100%;
+    height: 100vh;
+    /* Force height to viewport */
+    width: 100%;
+    overflow: hidden;
+    /* Prevent parent from scrolling */
 }
 
 .areas-content {
     flex: 1;
     padding: 2rem;
     overflow-y: auto;
+    min-height: 0;
+    /* Critical for flex children to scroll properly */
 }
 
 .area-header-block {

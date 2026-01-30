@@ -165,27 +165,29 @@ export const useFeedStore = defineStore('feed-aggregator', () => {
 
     isLoading.value = true
     resources.value = []
+    try {
+      const promises = activeFeeds.map(async (sub) => {
+        try {
+          if (newsAdapter.validateUrl(sub.url))
+            return await newsAdapter.fetch(sub.url, sub.keywords)
+          if (govAdapter.validateUrl(sub.url)) return await govAdapter.fetch(sub.url, sub.keywords)
+          if (congressAdapter.validateUrl(sub.url))
+            return await congressAdapter.fetch(sub.url, sub.keywords)
+          return await rssAdapter.fetch(sub.url)
+        } catch (err) {
+          console.error(`Failed to fetch ${sub.url}`, err)
+          return []
+        }
+      })
 
-    const promises = activeFeeds.map(async (sub) => {
-      try {
-        if (newsAdapter.validateUrl(sub.url)) return await newsAdapter.fetch(sub.url, sub.keywords)
-        if (govAdapter.validateUrl(sub.url)) return await govAdapter.fetch(sub.url, sub.keywords)
-        if (congressAdapter.validateUrl(sub.url))
-          return await congressAdapter.fetch(sub.url, sub.keywords)
-        return await rssAdapter.fetch(sub.url)
-      } catch (err) {
-        console.error(`Failed to fetch ${sub.url}`, err)
-        return []
-      }
-    })
+      const results = await Promise.all(promises)
 
-    const results = await Promise.all(promises)
-
-    resources.value = results.flat().sort((a, b) => {
-      return new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime()
-    })
-
-    isLoading.value = false
+      resources.value = results.flat().sort((a, b) => {
+        return new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime()
+      })
+    } finally {
+      isLoading.value = false
+    }
   }
 
   // --- 4. LIBRARY ACTIONS ---

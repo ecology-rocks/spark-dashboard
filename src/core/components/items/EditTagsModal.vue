@@ -1,65 +1,62 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch } from 'vue';
+import { useItemsStore } from '@/core/stores/items';
+import TagManager from '../TagManager.vue';
+import type { SavedItem } from '@/core/types/items';
 
 const props = defineProps<{
-    isOpen: boolean;
-    initialTags: string[];
+    item: SavedItem; // Required prop
 }>();
 
-const emit = defineEmits(['close', 'save']);
+const emit = defineEmits(['close']);
+const itemsStore = useItemsStore();
 
-const tagsInput = ref('');
-const inputRef = ref<HTMLInputElement | null>(null);
+// Initialize local state from the item prop
+const localTags = ref([...(props.item?.tags || [])]);
 
-// Sync local state when the modal opens
-watch(() => props.isOpen, async (isOpen) => {
-    if (isOpen) {
-        tagsInput.value = props.initialTags ? props.initialTags.join(', ') : '';
-        // Focus the input automatically
-        await nextTick();
-        inputRef.value?.focus();
+// Sync local state if the item changes while modal is open
+watch(() => props.item, (newVal) => {
+    // Use optional chaining and fallback to an empty array
+    if (newVal) {
+        localTags.value = [...(newVal.tags || [])];
     }
-});
+}, { deep: true });
 
-function handleSave() {
-    // Clean up the input: split by comma, trim whitespace, remove empty strings
-    const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
-    emit('save', tags);
+async function handleSave() {
+    await itemsStore.updateItemTags(props.item.id, localTags.value);
     emit('close');
 }
 </script>
 
 <template>
-    <div v-if="isOpen" class="modal-backdrop" @click.self="emit('close')">
+    <div class="modal-overlay" @click.self="emit('close')">
         <div class="modal-content">
-            <h3>🏷️ Edit Tags</h3>
+            <header class="modal-header">
+                <h3>Edit Tags</h3>
+                <button class="close-x" @click="emit('close')">×</button>
+            </header>
 
-            <div class="input-group">
-                <label>Tags (comma separated):</label>
-                <input ref="inputRef" v-model="tagsInput" placeholder="e.g. research, urgent, ideas"
-                    @keyup.enter="handleSave" />
-                <small>Press Enter to save</small>
+            <div class="modal-body">
+                <p class="item-title-preview">{{ item.title }}</p>
+                <TagManager v-model="localTags" />
             </div>
 
-            <div class="actions">
-                <button class="text-btn" @click="emit('close')">Cancel</button>
-                <button class="primary-btn" @click="handleSave">Save Tags</button>
-            </div>
+            <footer class="modal-actions">
+                <button class="secondary-btn" @click="emit('close')">Cancel</button>
+                <button class="primary-btn" @click="handleSave">Save Changes</button>
+            </footer>
         </div>
     </div>
 </template>
 
 <style scoped>
-.modal-backdrop {
+.modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
     z-index: 2000;
 }
 
@@ -67,65 +64,21 @@ function handleSave() {
     background: white;
     padding: 1.5rem;
     border-radius: 8px;
-    width: 350px;
+    width: 400px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-h3 {
-    margin-top: 0;
-    color: #2c3e50;
+.item-title-preview {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 1rem;
+    font-style: italic;
 }
 
-.input-group {
-    margin: 1.5rem 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-input {
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1rem;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-small {
-    color: #888;
-    font-size: 0.8rem;
-}
-
-.actions {
+.modal-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 1rem;
-    align-items: center;
-}
-
-.primary-btn {
-    background: #2c3e50;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.primary-btn:hover {
-    background: #34495e;
-}
-
-.text-btn {
-    background: none;
-    border: none;
-    color: #666;
-    cursor: pointer;
-}
-
-.text-btn:hover {
-    text-decoration: underline;
-    color: #333;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
 }
 </style>

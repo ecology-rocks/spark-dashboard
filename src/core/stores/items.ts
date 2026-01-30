@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import {
   getFirestore,
   collection,
@@ -26,6 +26,16 @@ export const useItemsStore = defineStore('items', () => {
   let areaUnsubscribe: Unsubscribe | null = null
 
   // --- ACTIONS ---
+
+  const allUniqueTags = computed(() => {
+    const tags = new Set<string>()
+    items.value.forEach((item) => {
+      if (item.tags) {
+        item.tags.forEach((tag) => tags.add(tag))
+      }
+    })
+    return Array.from(tags).sort()
+  })
 
   /**
    * 1. Create (Save Item)
@@ -115,6 +125,13 @@ export const useItemsStore = defineStore('items', () => {
    */
   function fetchByArea(areaId: string) {
     if (!auth.user) return
+
+    // Stop the global listener if it exists to avoid double-updates
+    if (globalUnsubscribe) {
+      globalUnsubscribe()
+      globalUnsubscribe = null
+    }
+
     if (areaUnsubscribe) areaUnsubscribe()
 
     const q = query(
@@ -133,21 +150,35 @@ export const useItemsStore = defineStore('items', () => {
    * Fetch ALL items (For Action Center / Global View)
    */
   function fetchAll() {
-    if (!auth.user) return
-    // Only subscribe if we haven't already
-    if (globalUnsubscribe) return
+    if (!auth.user) {
+      console.warn('[DEBUG] Store: fetchAll called but no user logged in')
+      return
+    }
+    if (globalUnsubscribe) {
+      console.log('[DEBUG] Store: fetchAll called but subscription already exists')
+      return
+    }
 
+    console.log('[DEBUG] Store: Establishing Global Items Subscription')
     const q = query(collection(db, 'users', auth.user.uid, 'saved_items'))
 
-    globalUnsubscribe = onSnapshot(q, (snap) => {
-      items.value = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }) as SavedItem)
-        .sort((a, b) => (b.savedAt?.seconds || 0) - (a.savedAt?.seconds || 0))
-    })
+    globalUnsubscribe = onSnapshot(
+      q,
+      (snap) => {
+        console.log(`[DEBUG] Store: Received Snapshot with ${snap.docs.length} items`)
+        items.value = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }) as SavedItem)
+          .sort((a, b) => (b.savedAt?.seconds || 0) - (a.savedAt?.seconds || 0))
+      },
+      (err) => {
+        console.error('[DEBUG] Store: Snapshot Error:', err)
+      },
+    )
   }
 
   return {
     items,
+    allUniqueTags,
     createItem,
     updateItemDetails,
     updateItemStatus,

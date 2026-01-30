@@ -33,7 +33,8 @@ const auth = useAuthStore(); // <--- Check this
                 <div class="nav-divider">Plugins</div>
 
                 <template v-for="plugin in activePlugins" :key="plugin.manifest.id">
-                    <router-link v-if="plugin.routes.length > 0" :to="plugin.routes[0]!.path" class="nav-item">
+                    <router-link v-if="plugin.routes.length > 0" :to="'/' + plugin.routes[0]?.path.replace(/^\//, '')"
+                        class="nav-item">
                         {{ plugin.manifest.name }}
                     </router-link>
                 </template>
@@ -41,7 +42,7 @@ const auth = useAuthStore(); // <--- Check this
         </aside>
 
         <main class="content">
-            <RouterView />
+            <RouterView :key="$route.fullPath" />
         </main>
     </div>
 </template>

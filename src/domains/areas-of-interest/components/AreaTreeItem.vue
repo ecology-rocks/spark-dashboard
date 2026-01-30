@@ -59,7 +59,7 @@ async function onDrop(e: DragEvent) {
 </script>
 
 <template>
-    <li :class="{ selected: isSelected, 'drag-over': isDragOver }">
+    <li v-if="area && area.id" :class="{ selected: isSelected, 'drag-over': isDragOver }">
         <div class="row" :style="{ paddingLeft: depth * 12 + 'px' }" @click="handleClick" @dragover.prevent="onDragOver"
             @dragleave="onDragLeave" @drop="onDrop">
             <span v-if="hasChildren" class="toggle-btn" :class="{ rotated: isOpen }" @click="toggle">

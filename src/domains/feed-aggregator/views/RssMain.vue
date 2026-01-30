@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useFeedStore } from '../store';
 import { useAnalysisStore } from '@/core/stores/analysis';
 import SourceManager from '../components/SourceManager.vue';
@@ -24,10 +24,21 @@ function openSaveModal(item: any) {
 }
 
 onMounted(() => {
-    if (feedStore.subscriptions.length > 0) {
-        feedStore.fetchAll();
+    console.log('[DEBUG] RssMain: Mounted');
+    console.log('[DEBUG] Subscriptions count:', feedStore.subscriptions.length);
+    feedStore.fetchAll();
+});
+
+watch(() => feedStore.isLoading, (loading) => {
+    console.log('[DEBUG] News Wire Loading:', loading);
+    if (!loading) {
+        console.log('[DEBUG] News Wire Results:', feedStore.resources.length);
     }
 });
+
+watch(() => feedStore.subscriptions, (subs) => {
+    console.log('[DEBUG] Subscriptions Updated:', subs.map(s => s.url));
+}, { deep: true });
 </script>
 
 <template>
