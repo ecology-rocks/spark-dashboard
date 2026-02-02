@@ -1,5 +1,3 @@
-import fetch from 'node-fetch' // (Or remove if using native fetch)
-
 export const handler = async function (event, context) {
   const apiKey = process.env.CONGRESS_API_KEY
   if (!apiKey) return { statusCode: 500, body: 'Server missing CONGRESS_API_KEY' }
