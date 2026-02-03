@@ -18,7 +18,6 @@ const hasChildren = computed(() => props.area.children && props.area.children.le
 const isSelected = computed(() => areasStore.selectedAreaId === props.area.id);
 
 function handleClick() {
-    itemsStore.fetchByArea(props.area.id);
     areasStore.selectedAreaId = props.area.id;
 }
 

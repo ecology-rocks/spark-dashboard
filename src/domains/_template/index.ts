@@ -1,4 +1,4 @@
-import type { SparkPlugin } from '@/core/types/plugin';
+/*import type { SparkPlugin } from '@/core/types/plugin';
 import Widget from './components/Widget.vue';
 import MainView from './views/MainView.vue';
 
@@ -20,4 +20,4 @@ export const TemplatePlugin: SparkPlugin = {
       component: MainView,
     },
   ],
-};
+};*/

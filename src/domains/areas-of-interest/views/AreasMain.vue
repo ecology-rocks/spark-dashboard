@@ -72,11 +72,6 @@ onMounted(async () => {
         console.log('[DEBUG] Starting initial fetchAll');
         await itemsStore.fetchAll();
         console.log('[DEBUG] Items after fetchAll:', itemsStore.items.length);
-
-        if (areasStore.selectedAreaId) {
-            console.log('[DEBUG] Fetching by Area:', areasStore.selectedAreaId);
-            itemsStore.fetchByArea(areasStore.selectedAreaId);
-        }
     } catch (error) {
         console.error("[DEBUG] Load Error:", error);
     }
@@ -141,11 +136,15 @@ const currentArea = computed(() => areasStore.areas.find(a => a.id === areasStor
 const pageTitle = computed(() => currentArea.value ? currentArea.value.name : '🗃️ All Items');
 
 const filteredItems = computed(() => {
-    const rawItems = itemsStore.items;
+    let items = [...itemsStore.items]; // Start with ALL items
 
-    if (!rawItems || rawItems.length === 0) return [];
-
-    let items = [...rawItems];
+    // 0. Area Filter (Recursive)
+    if (areasStore.selectedAreaId) {
+        // Get this folder AND all subfolders
+        const allowedIds = areasStore.getAllChildIds(areasStore.selectedAreaId);
+        // Only show items that belong to one of these folders
+        items = items.filter(i => allowedIds.includes(i.areaId));
+    }
 
     // 1. Tag Filter
     if (activeFilter.value) {

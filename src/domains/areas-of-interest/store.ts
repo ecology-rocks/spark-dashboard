@@ -50,6 +50,15 @@ export const useAreasStore = defineStore('areas-of-interest', () => {
     return roots
   })
 
+  function getAllChildIds(areaId: string): string[] {
+    let ids = [areaId]
+    const children = areas.value.filter((a) => a.parentId === areaId)
+    children.forEach((child) => {
+      ids = [...ids, ...getAllChildIds(child.id)]
+    })
+    return ids
+  }
+
   watch(
     () => auth.user,
     (user) => {
@@ -109,5 +118,6 @@ export const useAreasStore = defineStore('areas-of-interest', () => {
     createArea,
     updateArea,
     deleteArea,
+    getAllChildIds,
   }
 })
