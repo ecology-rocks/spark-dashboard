@@ -1,5 +1,6 @@
 import type { SparkPlugin } from '@/core/types/plugin'
 import SocialMain from './views/SocialMain.vue'
+import SocialWidget from './components/SocialWidget.vue'
 
 const SocialPlugin: SparkPlugin = {
   manifest: {
@@ -10,6 +11,7 @@ const SocialPlugin: SparkPlugin = {
   },
   components: {
     mainView: SocialMain,
+    dashboardWidget: SocialWidget,
   },
   routes: [
     {
