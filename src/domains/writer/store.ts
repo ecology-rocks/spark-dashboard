@@ -9,15 +9,17 @@ import {
   onSnapshot,
   deleteDoc,
   serverTimestamp,
-  type Unsubscribe,
+  query,
+  orderBy,
 } from 'firebase/firestore'
 import { useAuthStore } from '@/core/stores/auth'
-import type { Draft } from './types'
+import type { Draft, Folder } from './types'
 
 export const useWriterStore = defineStore('writer', () => {
   const db = getFirestore()
   const auth = useAuthStore()
 
+  const folders = ref<Folder[]>([])
   const drafts = ref<Draft[]>([])
   const activeDraftId = ref<string | null>(null)
   const isSidebarOpen = ref(true) // Default to having source material open
@@ -26,6 +28,38 @@ export const useWriterStore = defineStore('writer', () => {
   let unsubscribe: Unsubscribe | null = null
 
   // --- ACTIONS ---
+
+  async function createFolder(name: string) {
+    if (!auth.user) return
+    await addDoc(collection(db, 'users', auth.user.uid, 'writer_folders'), {
+      name,
+      createdAt: serverTimestamp(),
+    })
+  }
+
+  async function deleteFolder(id: string) {
+    if (!auth.user || !confirm('Delete folder? Drafts inside will move to Unfiled.')) return
+
+    // 1. Move drafts to root (null)
+    const draftsInFolder = drafts.value.filter((d) => d.folderId === id)
+    for (const draft of draftsInFolder) {
+      await moveDraft(draft.id, null)
+    }
+
+    // 2. Delete folder
+    await deleteDoc(doc(db, 'users', auth.user.uid, 'writer_folders', id))
+  }
+
+  async function moveDraft(draftId: string, folderId: string | null) {
+    if (!auth.user) return
+    const ref = doc(db, 'users', auth.user.uid, 'drafts', draftId)
+    await updateDoc(ref, { folderId, updatedAt: serverTimestamp() })
+  }
+
+  async function renameFolder(id: string, name: string) {
+    if (!auth.user) return
+    await updateDoc(doc(db, 'users', auth.user.uid, 'writer_folders', id), { name })
+  }
 
   async function createDraft(title: string = 'Untitled Draft') {
     if (!auth.user) return
@@ -78,15 +112,41 @@ export const useWriterStore = defineStore('writer', () => {
     })
   }
 
+  function fetchAll() {
+    if (!auth.user) return
+
+    // Fetch Drafts
+    const draftCol = collection(db, 'users', auth.user.uid, 'drafts')
+    onSnapshot(draftCol, (snap) => {
+      drafts.value = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as Draft)
+        .sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0))
+    })
+
+    // Fetch Folders
+    const folderCol = query(
+      collection(db, 'users', auth.user.uid, 'writer_folders'),
+      orderBy('createdAt', 'asc'),
+    )
+    onSnapshot(folderCol, (snap) => {
+      folders.value = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Folder)
+    })
+  }
+
   return {
     drafts,
+    folders, // <--- Export
     activeDraftId,
     isSidebarOpen,
+    isOpenModalVisible,
     createDraft,
     updateDraft,
     deleteDraft,
-    fetchDrafts,
-    isOpenModalVisible,
     publishDraft,
+    createFolder, // <--- Export
+    deleteFolder, // <--- Export
+    moveDraft, // <--- Export
+    renameFolder, // <--- Export
+    fetchAll, // <--- Renamed from fetchDrafts to fetchAll (update usage!)
   }
 })

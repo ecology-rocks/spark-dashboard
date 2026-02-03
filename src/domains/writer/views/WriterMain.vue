@@ -3,6 +3,7 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useWriterStore } from '../store';
 import RichEditor from '@/core/components/RichEditor.vue';
 import SourceSidebar from '../components/SourceSidebar.vue';
+import FileNavigation from '../components/FileNavigation.vue';
 import OpenDraftModal from '../components/OpenDraftModal.vue';
 import PublishModal from '../components/PublishModal.vue';
 
@@ -13,7 +14,7 @@ const saveStatus = ref('Saved');
 let saveTimer: any = null;
 
 onMounted(() => {
-    store.fetchDrafts();
+    store.fetchAll();
 });
 
 // Auto-select most recent draft safely
@@ -112,10 +113,6 @@ function handleCustomDrop(data: any) {
 <template>
     <div class="writer-layout">
         <header class="writer-header">
-            <div class="left-controls">
-                <button class="action-btn" @click="store.isOpenModalVisible = true">📂 Open</button>
-                <button class="icon-btn" @click="createNew">➕</button>
-            </div>
 
             <div class="center-controls" v-if="currentDraft">
                 <input :value="currentDraft.title" @input="onTitleChange" @blur="saveDraft" class="title-input" />
@@ -143,6 +140,7 @@ function handleCustomDrop(data: any) {
         </header>
 
         <div class="workspace">
+            <FileNavigation />
             <main class="editor-pane">
                 <div v-if="currentDraft" :key="currentDraft.id" class="editor-container">
                     <RichEditor ref="editorComponentRef" :modelValue="currentDraft.content"

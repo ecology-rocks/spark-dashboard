@@ -19,7 +19,7 @@ const hasSearchedZotero = ref(false);
 
 onMounted(() => {
     itemsStore.fetchAll();
-    writerStore.fetchDrafts();
+    writerStore.fetchAll();
 });
 
 let searchTimeout: any = null;
