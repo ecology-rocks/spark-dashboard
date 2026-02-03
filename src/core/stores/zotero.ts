@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { formatCitation } from '@/core/services/citationFormatter'
 
 export const useZoteroStore = defineStore('zotero', () => {
   const apiKey = ref(localStorage.getItem('zotero_api_key') || '')
@@ -41,9 +42,11 @@ export const useZoteroStore = defineStore('zotero', () => {
       searchResults.value = data.map((item: any) => ({
         key: item.key,
         title: item.data.title || 'Untitled',
-        creators: item.data.creators?.map((c: any) => c.lastName || c.name).join(', ') || 'Unknown',
-        date: item.data.date || 'n.d.',
-        // FIX: Use the actual source URL (item.data.url) instead of the Zotero library link
+        // USE THE SERVICE HERE:
+        citation: formatCitation(item.data),
+        // We still keep specific fields if needed, but 'citation' is now the display string
+        creators: item.data.creators,
+        date: item.data.date,
         url: item.data.url || null,
       }))
     } catch (e) {

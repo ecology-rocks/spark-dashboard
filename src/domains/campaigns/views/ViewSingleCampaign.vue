@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useCampaignStore } from '../store';
+import { useAreasStore } from '@/domains/areas-of-interest/store'; // Need this to select folder
 import TagManager from '@/core/components/TagManager.vue';
 import LinkItemModal from '../components/LinkItemModal.vue';
 
@@ -9,6 +10,7 @@ const route = useRoute();
 const router = useRouter();
 
 const store = useCampaignStore();
+const areasStore = useAreasStore();
 const campaign = computed(() => store.campaigns.find(c => c.id === route.params.id));
 
 const isLinkModalOpen = ref(false);
@@ -38,8 +40,6 @@ function addGoalLine() {
     newLineItem.value = '';
 }
 
-
-
 function removeGoalLine(index: number) {
     if (!campaign.value) return;
     const items = [...campaign.value.goals.lineItems];
@@ -53,7 +53,7 @@ function onNarrativeChange(val: string) {
 }
 
 // --- LINKED ITEMS HANDLERS ---
-async function handleAddLink(linkPayload: { pluginId: string; itemId: string; title: string }) {
+async function handleAddLink(linkPayload: { pluginId: string; itemId: string; title: string; url?: string }) {
     if (!campaign.value) return;
 
     const exists = campaign.value.linkedItems.some(
@@ -74,6 +74,23 @@ async function removeLink(itemId: string) {
     if (!campaign.value || !confirm("Unlink this item?")) return;
     const updatedLinks = campaign.value.linkedItems.filter(l => l.itemId !== itemId);
     await store.updateCampaign(campaign.value.id, { linkedItems: updatedLinks });
+}
+
+// --- NAVIGATION ---
+// --- NAVIGATION ---
+function navigateToLink(link: any) {
+    if (link.pluginId === 'areas') {
+        // Go to Areas main view
+        router.push(`/areas`);
+    } else if (link.pluginId === 'folder') {
+        // Set the store selection so the sidebar updates
+        areasStore.selectedAreaId = link.itemId;
+        router.push(`/areas`);
+    } else if (link.pluginId === 'writer') {
+        router.push(`/writer?id=${link.itemId}`);
+    } else if (link.pluginId === 'zotero' && link.url) {
+        window.open(link.url, '_blank');
+    }
 }
 </script>
 
@@ -139,14 +156,18 @@ async function removeLink(itemId: string) {
             <div v-for="link in campaign.linkedItems" :key="link.itemId" class="grid-card link-card"
                 :class="[`link-type-${link.pluginId}`]">
                 <div class="link-header">
-                    <span class="plugin-tag">{{ link.pluginId }}</span>
+                    <span class="plugin-tag">{{ link.pluginId === 'areas' ? 'Item' : link.pluginId }}</span>
                     <button class="remove-btn" @click="removeLink(link.itemId)">×</button>
                 </div>
                 <h4>{{ link.title }}</h4>
-                <router-link :to="`/${link.pluginId === 'areas' ? 'areas' : 'writer'}?id=${link.itemId}`"
-                    class="view-link">
-                    View Original ↗
-                </router-link>
+                <p v-if="link.citation" class="link-citation">{{ link.citation }}</p>
+                <a v-if="link.pluginId === 'zotero' && link.url" :href="link.url" target="_blank" class="view-link">
+                    Open Source ↗
+                </a>
+                <button v-else-if="link.pluginId !== 'zotero'" class="view-link-btn" @click="navigateToLink(link)">
+                    {{ link.pluginId === 'folder' ? 'Open Folder 📂' : 'View Content ↗' }}
+                </button>
+                <span v-else class="no-link-text">No URL available</span>
             </div>
 
             <div class="grid-card add-link-card" @click="isLinkModalOpen = true">
@@ -161,6 +182,7 @@ async function removeLink(itemId: string) {
 </template>
 
 <style scoped>
+/* Reuse existing styles, adding specific plugin colors */
 .header-title-block {
     display: flex;
     flex-direction: column;
@@ -183,7 +205,6 @@ async function removeLink(itemId: string) {
     color: #ef4444;
 }
 
-/* Main Layout */
 .campaign-detail {
     padding: 2rem;
     max-width: 1400px;
@@ -192,7 +213,6 @@ async function removeLink(itemId: string) {
     min-height: 100vh;
 }
 
-/* Sticky Header Row */
 .sticky-grid-header {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -207,7 +227,6 @@ async function removeLink(itemId: string) {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
-/* Common Grid Card Styling */
 .grid-card {
     background: white;
     border: 1px solid #e5e7eb;
@@ -218,11 +237,10 @@ async function removeLink(itemId: string) {
     transition: box-shadow 0.2s;
 }
 
-/* Base Card - No hardcoded color here anymore */
+/* Base Card */
 .link-card {
     border: 1px solid #e5e7eb;
     border-left: 6px solid #9ca3af;
-    /* Default gray if plugin is unknown */
     padding: 1.5rem;
     background: white;
     border-radius: 12px;
@@ -231,10 +249,9 @@ async function removeLink(itemId: string) {
     transition: all 0.2s ease;
 }
 
-/* Areas (Research) - Blue Theme */
+/* Areas (Items) - Blue */
 .link-type-areas {
     border-left-color: #3b82f6;
-    /* Changes the border color */
 }
 
 .link-type-areas .plugin-tag {
@@ -242,14 +259,27 @@ async function removeLink(itemId: string) {
     color: #1e40af;
 }
 
-.link-type-areas .view-link {
+.link-type-areas .view-link-btn {
     color: #2563eb;
 }
 
-/* Writer (Drafts) - Purple Theme */
+/* Folders - Yellow/Amber */
+.link-type-folder {
+    border-left-color: #f59e0b;
+}
+
+.link-type-folder .plugin-tag {
+    background: #fffbeb;
+    color: #b45309;
+}
+
+.link-type-folder .view-link-btn {
+    color: #d97706;
+}
+
+/* Writer (Drafts) - Purple */
 .link-type-writer {
     border-left-color: #8b5cf6;
-    /* Changes the border color */
 }
 
 .link-type-writer .plugin-tag {
@@ -257,25 +287,24 @@ async function removeLink(itemId: string) {
     color: #5b21b6;
 }
 
-.link-type-writer .view-link {
+.link-type-writer .view-link-btn {
     color: #7c3aed;
 }
 
-/* Action Center or Feed (Example - Orange) */
-.link-type-action-center {
-    border-left-color: #f59e0b;
+/* Zotero (Research) - Green */
+.link-type-zotero {
+    border-left-color: #10b981;
 }
 
-.link-type-action-center .plugin-tag {
-    background: #fffbe6;
-    color: #b45309;
+.link-type-zotero .plugin-tag {
+    background: #ecfdf5;
+    color: #047857;
 }
 
-.link-type-action-center .view-link {
-    color: #d97706;
+.link-type-zotero .view-link {
+    color: #059669;
 }
 
-/* Hover State */
 .link-card:hover {
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
@@ -312,13 +341,10 @@ h3 {
     border: 1px solid #d1d5db;
     border-radius: 6px;
     font-family: inherit;
-    /* Ensures it matches the app font, not system mono */
     font-size: 0.9rem;
     line-height: 1.4;
     resize: vertical;
-    /* Allows vertical resizing only */
     min-height: 42px;
-    /* height of roughly 2 lines */
     max-height: 120px;
     background: #ffffff;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -332,11 +358,9 @@ h3 {
 
 .line-items-section {
     border-top: none;
-    /* Removed border since it's now the top element */
     padding-top: 0;
 }
 
-/* Update goals-card to remove unneeded height since Editor is gone */
 .goals-card {
     min-height: auto;
     max-height: none;
@@ -348,7 +372,6 @@ h3 {
     gap: 1rem;
     overflow-y: auto;
 }
-
 
 .goals-list {
     padding-left: 1.2rem;
@@ -376,7 +399,6 @@ h3 {
     font-size: 0.9rem;
 }
 
-/* Card 3: Important Dates */
 .card-header {
     display: flex;
     justify-content: space-between;
@@ -421,13 +443,11 @@ h3 {
     border-bottom-color: #3b82f6;
 }
 
-/* Secondary Content Grid (Linked Items) */
 .linked-content-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 1.5rem;
 }
-
 
 .link-header {
     display: flex;
@@ -443,21 +463,32 @@ h3 {
     letter-spacing: 0.05em;
     padding: 2px 6px;
     border-radius: 4px;
-    background: #eff6ff;
-    color: #1e40af;
 }
 
-.view-link {
+.view-link,
+.view-link-btn {
     display: inline-block;
     margin-top: 1rem;
-    color: #2563eb;
     text-decoration: none;
     font-weight: 600;
     font-size: 0.9rem;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
 }
 
-.view-link:hover {
+.view-link:hover,
+.view-link-btn:hover {
     text-decoration: underline;
+}
+
+.no-link-text {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: #9ca3af;
+    font-style: italic;
 }
 
 .add-link-card {
@@ -481,7 +512,6 @@ h3 {
     margin-top: 0.5rem;
 }
 
-/* Buttons and Icons */
 .add-btn-sm {
     background: #374151;
     color: white;

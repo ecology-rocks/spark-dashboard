@@ -5,9 +5,13 @@ export interface CampaignDate {
 }
 
 export interface LinkedItem {
-  pluginId: 'areas' | 'writer' | string
+  // expanded union type for clarity, though string allows extensions
+  pluginId: 'areas' | 'writer' | 'folder' | 'zotero' | string
   itemId: string
   title: string
+  // Optional: Store external URL (for Zotero) or metadata
+  url?: string
+  citation?: string
 }
 
 export interface Campaign {

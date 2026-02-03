@@ -1,23 +1,47 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useItemsStore } from '@/core/stores/items';
 import { useWriterStore } from '@/domains/writer/store';
+import { useAreasStore } from '@/domains/areas-of-interest/store';
+import { useZoteroStore } from '@/core/stores/zotero';
 
 const props = defineProps<{ campaignId: string }>();
 const emit = defineEmits(['close', 'link']);
 
 const itemsStore = useItemsStore();
 const writerStore = useWriterStore();
+const areasStore = useAreasStore();
+const zoteroStore = useZoteroStore();
 
-const activeTab = ref<'areas' | 'writer'>('areas');
+const activeTab = ref<'saved' | 'writer' | 'research'>('saved');
 const modalSearchQuery = ref('');
+const hasSearchedZotero = ref(false);
 
 onMounted(() => {
     itemsStore.fetchAll();
     writerStore.fetchDrafts();
 });
 
+let searchTimeout: any = null;
+
+watch([modalSearchQuery, activeTab], ([newQuery, newTab]) => {
+    if (newTab === 'research' && newQuery.length > 2) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            hasSearchedZotero.value = true;
+            zoteroStore.searchLibrary(newQuery);
+        }, 600);
+    }
+});
+
 // Computed filtering for Research items
+const filteredFolders = computed(() => {
+    const query = modalSearchQuery.value.toLowerCase();
+    return areasStore.areas.filter(a =>
+        a.name.toLowerCase().includes(query)
+    );
+});
+
 const filteredItems = computed(() => {
     const query = modalSearchQuery.value.toLowerCase();
     return itemsStore.items.filter(i =>
@@ -34,12 +58,25 @@ const filteredDrafts = computed(() => {
     );
 });
 
-function selectItem(item: any, type: 'areas' | 'writer') {
-    emit('link', {
+function selectItem(item: any, type: string) {
+    const payload: any = {
         pluginId: type,
-        itemId: item.id,
-        title: item.title
-    });
+        itemId: item.id || item.key,
+        title: item.title || item.name,
+    };
+
+    if (item.url) payload.url = item.url;
+
+    // SIMPLIFIED LOGIC:
+    if (type === 'zotero') {
+        // The store already formatted this using your service
+        payload.citation = item.citation;
+    }
+    else if (type === 'areas' && item.zotero?.citation) {
+        payload.citation = item.zotero.citation;
+    }
+
+    emit('link', payload);
 }
 </script>
 
@@ -54,22 +91,42 @@ function selectItem(item: any, type: 'areas' | 'writer') {
             <div class="modal-search">
                 <div class="search-wrapper">
                     <span class="search-icon">🔍</span>
-                    <input v-model="modalSearchQuery" type="text" placeholder="Search by title or tag..." autofocus />
+                    <input v-model="modalSearchQuery" type="text"
+                        :placeholder="activeTab === 'research' ? 'Search Zotero library...' : 'Search by title or tag...'"
+                        autofocus />
                 </div>
             </div>
 
             <div class="tabs">
-                <button :class="{ active: activeTab === 'areas' }" @click="activeTab = 'areas'">
-                    Research ({{ filteredItems.length }})
+                <button :class="{ active: activeTab === 'saved' }" @click="activeTab = 'saved'">
+                    Saved Items
                 </button>
                 <button :class="{ active: activeTab === 'writer' }" @click="activeTab = 'writer'">
-                    Drafts ({{ filteredDrafts.length }})
+                    Drafts
+                </button>
+                <button :class="{ active: activeTab === 'research' }" @click="activeTab = 'research'">
+                    Research (Zotero)
                 </button>
             </div>
 
             <div class="list-container">
-                <div v-if="activeTab === 'areas'" class="selectable-list">
-                    <div v-if="filteredItems.length === 0" class="empty-list">No research matches your search.</div>
+
+                <div v-if="activeTab === 'saved'" class="selectable-list">
+                    <div v-if="filteredFolders.length === 0 && filteredItems.length === 0" class="empty-list">
+                        No saved items match your search.
+                    </div>
+
+                    <div v-if="filteredFolders.length > 0" class="section-label">Folders</div>
+                    <div v-for="folder in filteredFolders" :key="folder.id" @click="selectItem(folder, 'folder')"
+                        class="item-row folder-row">
+                        <span class="icon">📂</span>
+                        <div class="item-info">
+                            <span class="item-title">{{ folder.name }}</span>
+                            <span class="item-meta">Folder</span>
+                        </div>
+                    </div>
+
+                    <div v-if="filteredItems.length > 0" class="section-label">Items</div>
                     <div v-for="i in filteredItems" :key="i.id" @click="selectItem(i, 'areas')" class="item-row">
                         <span class="icon">📄</span>
                         <div class="item-info">
@@ -89,6 +146,23 @@ function selectItem(item: any, type: 'areas' | 'writer') {
                         </div>
                     </div>
                 </div>
+
+                <div v-if="activeTab === 'research'" class="selectable-list">
+                    <div v-if="zoteroStore.isLoading" class="loading-state">Searching Zotero...</div>
+                    <div v-else-if="zoteroStore.searchResults.length === 0" class="empty-list">
+                        {{ hasSearchedZotero ? 'No results found in library.' : 'Type to search your Zotero library.' }}
+                    </div>
+
+                    <div v-else v-for="z in zoteroStore.searchResults" :key="z.key" @click="selectItem(z, 'zotero')"
+                        class="item-row zotero-row">
+                        <span class="icon">🎓</span>
+                        <div class="item-info">
+                            <span class="item-title">{{ z.title }}</span>
+                            <span class="item-meta">{{ z.citation }}</span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <footer class="modal-actions">
@@ -193,6 +267,16 @@ function selectItem(item: any, type: 'areas' | 'writer') {
     min-height: 350px;
 }
 
+.section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 8px 12px 4px 12px;
+    margin-top: 4px;
+}
+
 .item-row {
     display: flex;
     align-items: center;
@@ -205,6 +289,15 @@ function selectItem(item: any, type: 'areas' | 'writer') {
 
 .item-row:hover {
     background: #eff6ff;
+}
+
+.folder-row .icon {
+    font-size: 1.2rem;
+}
+
+.zotero-row:hover {
+    background: #ecfdf5;
+    /* Greenish tint for research */
 }
 
 .item-info {
@@ -222,7 +315,8 @@ function selectItem(item: any, type: 'areas' | 'writer') {
     color: #6b7280;
 }
 
-.empty-list {
+.empty-list,
+.loading-state {
     padding: 4rem 1rem;
     text-align: center;
     color: #9ca3af;
