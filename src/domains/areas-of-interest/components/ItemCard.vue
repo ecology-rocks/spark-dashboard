@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useAnalysisStore } from '@/core/stores/analysis';
 import { useItemsStore } from '@/core/stores/items';
 import ActionStatusPicker from './ActionStatusPicker.vue';
 import type { SavedItem } from '@/core/types/items';
+import { useAreasStore } from '../store';
 
 const props = defineProps<{
     item: SavedItem;
@@ -16,8 +18,16 @@ const emit = defineEmits([
     'filter-tag', 'zotero' // NEW event
 ]);
 
+const areasStore = useAreasStore();
 const analysisStore = useAnalysisStore();
 const itemsStore = useItemsStore();
+
+
+const folderName = computed(() => {
+    if (!props.item.areaId) return 'Unfiled';
+    const area = areasStore.areas.find(a => a.id === props.item.areaId);
+    return area ? area.name : 'Unfiled';
+});
 
 function hasReadableContent(item: SavedItem) {
     // Social posts have content we display on card, so 'read' button is redundant
@@ -49,7 +59,13 @@ function onDragStart(event: DragEvent) {
 <template>
     <div class="item-card" draggable="true" @dragstart="onDragStart">
         <div class="top-row">
-            <div class="type-badge">{{ item.type }}</div>
+            <div class="badges-group">
+                <span class="folder-badge" :class="{ unfiled: !item.areaId }">
+                    {{ folderName }}
+                </span>
+
+                <div class="type-badge">{{ item.type }}</div>
+            </div>
             <div class="tags-list">
                 <span v-for="tag in item.tags" :key="tag" class="mini-tag clickable"
                     @click.stop="emit('filter-tag', tag)" title="Filter by this tag">
@@ -336,5 +352,29 @@ h4 a {
 
     /* 5. Ensure the WHOLE image is visible */
     object-fit: contain;
+}
+
+.badges-group {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.folder-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    background: #e3f2fd;
+    /* Light Blue for folders */
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+}
+
+.folder-badge.unfiled {
+    background: #f5f5f5;
+    color: #999;
+    border-color: #eee;
+    font-weight: normal;
 }
 </style>

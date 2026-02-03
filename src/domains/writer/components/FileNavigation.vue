@@ -12,7 +12,10 @@ const draftsByFolder = computed(() => {
     const map: Record<string, any[]> = {};
     store.folders.forEach(f => map[f.id] = []);
     store.drafts.forEach(d => {
-        if (d.folderId && map[d.folderId]) map[d.folderId].push(d);
+        const fId = d.folderId; // <--- Capture in a const variable
+        if (fId && map[fId]) {
+            map[fId].push(d);
+        }
     });
     return map;
 });

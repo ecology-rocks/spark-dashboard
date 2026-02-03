@@ -11,6 +11,7 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  type Unsubscribe,
 } from 'firebase/firestore'
 import { useAuthStore } from '@/core/stores/auth'
 import type { Draft, Folder } from './types'
