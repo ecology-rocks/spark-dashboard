@@ -5,6 +5,7 @@ import ActionCenterPlugin from '@/domains/action-center'
 import WriterPlugin from '@/domains/writer'
 import CampaignsPlugin from '@/domains/campaigns'
 import SocialPlugin from '@/domains/social-monitor'
+import AnalyticsPlugin from '@/domains/analytics'
 
 export const activePlugins: SparkPlugin[] = [
   AreasPlugin,
@@ -13,6 +14,7 @@ export const activePlugins: SparkPlugin[] = [
   ActionCenterPlugin,
   WriterPlugin,
   CampaignsPlugin,
+  AnalyticsPlugin,
 ]
 
 export function getRoutes() {

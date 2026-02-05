@@ -7,7 +7,7 @@ const store = useWriterStore();
 const router = useRouter();
 
 onMounted(() => {
-    store.fetchDrafts();
+    store.fetchAll();
 });
 
 const recentDrafts = computed(() => {

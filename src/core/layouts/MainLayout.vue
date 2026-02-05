@@ -39,7 +39,9 @@ const auth = useAuthStore(); // <--- Check this
                 <router-link to="/social" class="nav-item">
                     <span class="label">Social Monitor</span>
                 </router-link>
-
+                <router-link to="/analytics" class="nav-item">
+                    <span class="label">Site Metrics</span>
+                </router-link>
 
                 <div class="nav-divider">Arrange</div>
 
