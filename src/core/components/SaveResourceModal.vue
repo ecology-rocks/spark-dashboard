@@ -30,7 +30,7 @@ async function handleSave() {
             type: props.itemData.type as any,
             content: props.itemData.content,
             sourceUrl: props.itemData.sourceUrl,
-            imageUrl: props.itemData.imageUrl // <--- Pass it to store
+            imageUrl: props.itemData.imageUrl || null // <--- Pass it to store
         },
         tags
     );

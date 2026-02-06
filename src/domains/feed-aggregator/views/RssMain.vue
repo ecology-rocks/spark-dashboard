@@ -18,7 +18,8 @@ function openSaveModal(item: any) {
         title: item.title,
         type: hasSpark ? 'spark' : 'rss',
         sourceUrl: item.url,
-        content: hasSpark ? item.nativeData.aiSummary : item.summary
+        content: hasSpark ? item.nativeData.aiSummary : item.summary,
+        imageUrl: item.imageUrl || null
     };
     isSaveModalOpen.value = true;
 }

@@ -33,9 +33,10 @@ exports.handler = async function (event, context) {
 
     // 2. Perform Search
     const host = hasAuth ? 'https://api.bsky.app' : 'https://public.api.bsky.app'
-    const endpoint = `${host}/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(q)}&limit=25`
+    const endpoint = `${host}/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(q)}&limit=25&lang=en`
 
     const headers = { 'Content-Type': 'application/json' }
+
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
     }
